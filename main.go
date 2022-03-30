@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 
@@ -156,6 +157,10 @@ func main() {
 		if surfaceOutput == "" {
 			surfaceOutput = "/output/"
 		}
+		err := os.MkdirAll(surfaceOutput, 0755)
+		if err != nil {
+			gologger.Fatal().Msgf("%v", err)
+		}
 		jsonFile, err := os.Open(options.surfaceInput)
 		if err != nil {
 			gologger.Fatal().Msgf("%v", err)
@@ -172,12 +177,29 @@ func main() {
 				gologger.Fatal().Msgf("%v", err)
 			}
 
-			outputFile := path.Join(surfaceOutput, input.Name)
-			options.OutputFile = outputFile
+			// pass temporary file to subfinder instead of final path, as only finished files should be placed there
+			file, err := ioutil.TempFile("", "subfinder")
+			if err != nil {
+				gologger.Fatal().Msgf("%v", err)
+			}
+			defer os.Remove(file.Name())
+
+			options.OutputFile = file.Name()
 			options.JSON = true
 			options.Domain = input.Domains
 
 			runIt(options)
+
+			realOutputFile := path.Join(surfaceOutput, input.Name)
+			outputFile, err := os.Create(realOutputFile)
+			if err != nil {
+				gologger.Fatal().Msgf("Couldn't open dest file: %v", err)
+			}
+			defer outputFile.Close()
+			_, err = io.Copy(outputFile, file)
+			if err != nil {
+				gologger.Fatal().Msgf("Writing to output file failed: %v", err)
+			}
 		}
 	}
 }

@@ -3,4 +3,4 @@ build:
 
 test:
 	rm -fr testdata/output
-	go run main.go -v -output-dir testdata/output testdata/inp1.txt
+	go run main.go -v -output-dir testdata/output/ testdata/inp1.txt
