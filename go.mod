@@ -4,8 +4,9 @@ go 1.18
 
 require (
 	github.com/projectdiscovery/fdmax v0.0.3
+	github.com/projectdiscovery/goflags v0.0.8-0.20220328195035-cc76049ee216
 	github.com/projectdiscovery/gologger v1.1.4
-	github.com/projectdiscovery/subfinder/v2 v2.5.0
+	github.com/projectdiscovery/subfinder/v2 v2.5.1
 )
 
 require (
@@ -25,7 +26,6 @@ require (
 	github.com/projectdiscovery/chaos-client v0.1.8 // indirect
 	github.com/projectdiscovery/dnsx v1.0.3 // indirect
 	github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5 // indirect
-	github.com/projectdiscovery/goflags v0.0.8-0.20220208063718-9bbeacc2fb8f // indirect
 	github.com/projectdiscovery/retryabledns v1.0.12-0.20210419174848-eec3ac17d61e // indirect
 	github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe // indirect
 	github.com/rs/xid v1.3.0 // indirect
@@ -38,3 +38,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
+
+replace github.com/projectdiscovery/subfinder/v2 => github.com/fopina/subfinder/v2 v2.5.2-0.20220407121325-f4102e96ef90
