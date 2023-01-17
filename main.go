@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,8 +14,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
-	"github.com/projectdiscovery/subfinder/v2/pkg/passive"
-	"github.com/projectdiscovery/subfinder/v2/pkg/resolve"
 	"github.com/projectdiscovery/subfinder/v2/pkg/runner"
 )
 
@@ -53,15 +50,15 @@ func ParseOptions() *Options {
 	flagSet.SetDescription(`Subfinder is a subdomain discovery tool that discovers subdomains for websites by using passive online sources.`)
 
 	createGroup(flagSet, "input", "Input",
-		flagSet.NormalizedStringSliceVarP(&options.Domain, "domain", "d", []string{}, "domains to find subdomains for"),
+		flagSet.StringSliceVarP(&options.Domain, "domain", "d", []string{}, "domains to find subdomains for", goflags.NormalizedStringSliceOptions),
 		flagSet.StringVarP(&options.DomainsFile, "list", "dL", "", "file containing list of domains for subdomain discovery"),
 	)
 
 	createGroup(flagSet, "source", "Source",
-		flagSet.NormalizedStringSliceVarP(&options.Sources, "sources", "s", []string{}, "specific sources to use for discovery (-s crtsh,github"),
+		flagSet.StringSliceVarP(&options.Sources, "sources", "s", []string{}, "specific sources to use for discovery (-s crtsh,github", goflags.NormalizedStringSliceOptions),
 		flagSet.BoolVar(&options.OnlyRecursive, "recursive", false, "use only recursive sources"),
 		flagSet.BoolVar(&options.All, "all", false, "Use all sources (slow) for enumeration"),
-		flagSet.NormalizedStringSliceVarP(&options.ExcludeSources, "exclude-sources", "es", []string{}, "sources to exclude from enumeration (-es archiveis,zoomeye)"),
+		flagSet.StringSliceVarP(&options.ExcludeSources, "exclude-sources", "es", []string{}, "sources to exclude from enumeration (-es archiveis,zoomeye)", goflags.NormalizedStringSliceOptions),
 	)
 
 	createGroup(flagSet, "rate-limit", "Rate-limit",
@@ -78,7 +75,7 @@ func ParseOptions() *Options {
 	)
 
 	createGroup(flagSet, "configuration", "Configuration",
-		flagSet.NormalizedStringSliceVar(&options.Resolvers, "r", []string{}, "comma separated list of resolvers to use"),
+		flagSet.StringSliceVar(&options.Resolvers, "r", []string{}, "comma separated list of resolvers to use", goflags.NormalizedStringSliceOptions),
 		flagSet.StringVarP(&options.ResolverList, "rlist", "rL", "", "file containing list of resolvers to use"),
 		flagSet.BoolVarP(&options.RemoveWildcard, "active", "nW", false, "display active subdomains only"),
 		flagSet.StringVar(&options.Proxy, "proxy", "", "http proxy to use with subfinder"),
@@ -121,11 +118,6 @@ func ParseOptions() *Options {
 		os.Exit(0)
 	}
 
-	options.AllSources = passive.DefaultAllSources
-	options.Recursive = passive.DefaultRecursiveSources
-	options.Recursive = resolve.DefaultResolvers
-	options.Sources = passive.DefaultSources
-	options.Providers = &runner.Providers{}
 	return options
 }
 
@@ -135,7 +127,7 @@ func runIt(options *Options) {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
 
-	err = newRunner.RunEnumeration(context.Background())
+	err = newRunner.RunEnumeration()
 	if err != nil {
 		gologger.Fatal().Msgf("Could not run enumeration: %s\n", err)
 	}
