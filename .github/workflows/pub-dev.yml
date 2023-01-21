@@ -7,10 +7,10 @@ on:
     - dev-*
 
 jobs:
-  publish:
+  publish-dev:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
@@ -27,4 +27,4 @@ jobs:
       with:
         push: true
         platforms: linux/amd64,linux/arm64,linux/arm/v7
-        tags: ghcr.io/${{ github.repository }}:${{ github.run_number }},ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+        tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
