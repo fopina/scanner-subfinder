@@ -1,12 +1,13 @@
-name: publish
+name: publish dev
 
 on:
   push:
     branches:
-    - main
+    - dev
+    - dev-*
 
 jobs:
-  publish:
+  publish-dev:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -26,4 +27,4 @@ jobs:
       with:
         push: true
         platforms: linux/amd64,linux/arm64,linux/arm/v7
-        tags: ghcr.io/${{ github.repository }}:${{ github.run_number }},ghcr.io/${{ github.repository }}:latest
+        tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
