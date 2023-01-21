@@ -2,12 +2,12 @@ name: test
 
 on:
   pull_request:
-    branches-ignore:
-      - dev
-      - dev-*
+    branches:
+      - main
 
 jobs:
   build-test:
+    if: startsWith(github.head_ref, 'dev') == false
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
