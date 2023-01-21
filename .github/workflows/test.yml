@@ -1,10 +1,12 @@
-name: publish
+name: test
 
 on:
-  push:
+  pull_request:
     branches:
-    - dev
-    - dev-*
+      - main
+    branches-ignore:
+      - dev
+      - dev-*
 
 jobs:
   publish:
