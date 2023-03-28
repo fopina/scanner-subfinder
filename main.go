@@ -13,34 +13,40 @@ import (
 )
 
 type Options struct {
-	input   string
-	output  string
-	binPath string
+	input      string
+	output     string
+	binPath    string
+	extraFlags []string
 }
 
-// ParseOptions parses the command line flags provided by a user
-func ParseOptions() *Options {
+// BuildOptions parses the command line flags provided by a user
+func BuildOptions() *Options {
 	options := &Options{}
 	flag.StringVarP(&options.output, "output", "o", "/output", "Scanner results directory")
 	flag.StringVarP(&options.binPath, "bin", "b", "subfinder", "Path to scanner binary")
+	return options
+}
 
+// ParseOptions parses the command line flags provided by a user
+func ParseOptions(options *Options) {
 	flag.Parse()
 
 	if flag.CommandLine.NArg() > 0 {
-		options.input = flag.CommandLine.Arg(0)
+		args := flag.CommandLine.Args()
+		options.extraFlags = args[:len(args)-1]
+		options.input = args[len(args)-1]
 	}
-	return options
-
 }
 
-type SurfaceInput struct {
+type SurfaceBugBountyInput struct {
 	Name    string
 	Domains []string
 }
 
 func main() {
 	// Parse the command line flags and read config files
-	options := ParseOptions()
+	options := BuildOptions()
+	ParseOptions(options)
 	err := os.MkdirAll(options.output, 0755)
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -51,7 +57,7 @@ func main() {
 	}
 	dec := json.NewDecoder(jsonFile)
 	for {
-		var input SurfaceInput
+		var input SurfaceBugBountyInput
 
 		err := dec.Decode(&input)
 		if err == io.EOF {
@@ -68,7 +74,15 @@ func main() {
 		}
 		defer os.Remove(file.Name())
 
-		cmd := exec.Command(options.binPath, "-json", "-o", file.Name(), "-d", strings.Join(input.Domains, ","))
+		flags := append(
+			[]string{
+				"-json",
+				"-o", file.Name(), "-d",
+				strings.Join(input.Domains, ","),
+			},
+			options.extraFlags...,
+		)
+		cmd := exec.Command(options.binPath, flags...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		err = cmd.Run()
