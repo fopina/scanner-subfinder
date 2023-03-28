@@ -4,194 +4,124 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"os"
+	"os/exec"
 	"path"
+	"strings"
 
-	// Attempts to increase the OS file descriptors - Fail silently
-	_ "github.com/projectdiscovery/fdmax/autofdmax"
-	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/gologger/formatter"
-	"github.com/projectdiscovery/gologger/levels"
-	"github.com/projectdiscovery/subfinder/v2/pkg/runner"
+	flag "github.com/spf13/pflag"
 )
 
 type Options struct {
-	runner.Options
-	surfaceInput string
+	input      string
+	output     string
+	binPath    string
+	extraHelp  bool
+	extraFlags []string
 }
 
-func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags ...*goflags.FlagData) {
-	flagSet.SetGroup(groupName, description)
-	for _, currentFlag := range flags {
-		currentFlag.Group(groupName)
-	}
-}
-
-// ConfigureOutput configures the output on the screen
-func ConfigureOutput(options *Options) {
-	// If the user desires verbose output, show verbose output
-	if options.Verbose {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
-	}
-	if options.NoColor {
-		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
-	}
-	if options.Silent {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
-	}
-}
-
-// ParseOptions parses the command line flags provided by a user
-func ParseOptions() *Options {
+// BuildOptions parses the command line flags provided by a user
+func BuildOptions() *Options {
 	options := &Options{}
-	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription(`Subfinder is a subdomain discovery tool that discovers subdomains for websites by using passive online sources.`)
-
-	createGroup(flagSet, "input", "Input",
-		flagSet.StringSliceVarP(&options.Domain, "domain", "d", []string{}, "domains to find subdomains for", goflags.NormalizedStringSliceOptions),
-		flagSet.StringVarP(&options.DomainsFile, "list", "dL", "", "file containing list of domains for subdomain discovery"),
-	)
-
-	createGroup(flagSet, "source", "Source",
-		flagSet.StringSliceVarP(&options.Sources, "sources", "s", []string{}, "specific sources to use for discovery (-s crtsh,github", goflags.NormalizedStringSliceOptions),
-		flagSet.BoolVar(&options.OnlyRecursive, "recursive", false, "use only recursive sources"),
-		flagSet.BoolVar(&options.All, "all", false, "Use all sources (slow) for enumeration"),
-		flagSet.StringSliceVarP(&options.ExcludeSources, "exclude-sources", "es", []string{}, "sources to exclude from enumeration (-es archiveis,zoomeye)", goflags.NormalizedStringSliceOptions),
-	)
-
-	createGroup(flagSet, "rate-limit", "Rate-limit",
-		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 0, "maximum number of http requests to send per second"),
-		flagSet.IntVar(&options.Threads, "t", 10, "number of concurrent goroutines for resolving (-active only)"),
-	)
-
-	createGroup(flagSet, "output", "Output",
-		flagSet.StringVarP(&options.OutputFile, "output", "o", "", "file to write output to"),
-		flagSet.BoolVarP(&options.JSON, "json", "oJ", false, "write output in JSONL(ines) format"),
-		flagSet.StringVarP(&options.OutputDirectory, "output-dir", "oD", "", "directory to write output (-dL only)"),
-		flagSet.BoolVarP(&options.CaptureSources, "collect-sources", "cs", false, "include all sources in the output (-json only)"),
-		flagSet.BoolVarP(&options.HostIP, "ip", "oI", false, "include host IP in output (-active only)"),
-	)
-
-	createGroup(flagSet, "configuration", "Configuration",
-		flagSet.StringSliceVar(&options.Resolvers, "r", []string{}, "comma separated list of resolvers to use", goflags.NormalizedStringSliceOptions),
-		flagSet.StringVarP(&options.ResolverList, "rlist", "rL", "", "file containing list of resolvers to use"),
-		flagSet.BoolVarP(&options.RemoveWildcard, "active", "nW", false, "display active subdomains only"),
-		flagSet.StringVar(&options.Proxy, "proxy", "", "http proxy to use with subfinder"),
-	)
-
-	createGroup(flagSet, "debug", "Debug",
-		flagSet.BoolVar(&options.Silent, "silent", false, "show only subdomains in output"),
-		flagSet.BoolVar(&options.Version, "version", false, "show version of subfinder"),
-		flagSet.BoolVar(&options.Verbose, "v", false, "show verbose output"),
-		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable color in output"),
-		flagSet.BoolVarP(&options.ListSources, "list-sources", "ls", false, "list all available sources"),
-	)
-
-	createGroup(flagSet, "optimization", "Optimization",
-		flagSet.IntVar(&options.Timeout, "timeout", 30, "seconds to wait before timing out"),
-		flagSet.IntVar(&options.MaxEnumerationTime, "max-time", 10, "minutes to wait for enumeration results"),
-	)
-
-	if err := flagSet.Parse(); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	//flag.StringVar(&finalOutput, "o", "/output/output.txt", "Output results to file (Subjack will write JSON if file ends with '.json').")
-	if flagSet.CommandLine.NArg() > 0 {
-		options.surfaceInput = flagSet.CommandLine.Arg(0)
-	}
-
-	// Default output is stdout
-	options.Output = os.Stdout
-
-	// Check if stdin pipe was given
-	options.Stdin = false
-
-	// Read the inputs and configure the logging
-	ConfigureOutput(options)
-
-	if options.Version {
-		gologger.Info().Msgf("Current Version: %s\n", runner.Version)
-		os.Exit(0)
-	}
-
+	flag.StringVarP(&options.output, "output", "o", "/output", "Scanner results directory")
+	flag.StringVarP(&options.binPath, "bin", "b", "subfinder", "Path to scanner binary")
+	flag.BoolVarP(&options.extraHelp, "scanner-help", "H", false, "Show help for the scanner extra flags")
 	return options
 }
 
-func runIt(options *Options) {
-	newRunner, err := runner.NewRunner(&options.Options)
-	if err != nil {
-		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
-	}
+// ParseOptions parses the command line flags provided by a user
+func ParseOptions(options *Options) {
+	flag.Parse()
 
-	err = newRunner.RunEnumeration()
-	if err != nil {
-		gologger.Fatal().Msgf("Could not run enumeration: %s\n", err)
+	if flag.CommandLine.NArg() > 0 {
+		args := flag.CommandLine.Args()
+		options.extraFlags = args[:len(args)-1]
+		options.input = args[len(args)-1]
 	}
 }
 
-type SurfaceInput struct {
+type SurfaceBugBountyInput struct {
 	Name    string
 	Domains []string
 }
 
 func main() {
 	// Parse the command line flags and read config files
-	options := ParseOptions()
-	if options.surfaceInput == "" {
-		runIt(options)
-	} else {
-		// re-define here instead of being default so it doesn't break standard subfinder usage
-		surfaceOutput := options.OutputDirectory
-		if surfaceOutput == "" {
-			surfaceOutput = "/output/"
-		}
-		err := os.MkdirAll(surfaceOutput, 0755)
+	options := BuildOptions()
+	ParseOptions(options)
+
+	if options.extraHelp {
+		cmd := exec.Command(options.binPath, "-h")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
 		if err != nil {
-			gologger.Fatal().Msgf("%v", err)
+			log.Fatalf("Failed to run scanner: %v", err)
 		}
-		jsonFile, err := os.Open(options.surfaceInput)
+		exe := os.Args[0]
+		fmt.Println(`
+## Note ##
+In order to pass any of these flags to the scanner, append them to the end of the command line, after "--".
+
+Normal: ` + exe + ` ... /path/to/input.txt
+Extra flags: ` + exe + ` ... -- -extra -flags /path/to/input.txt`)
+		// same exit code as normal help
+		os.Exit(2)
+	}
+	err := os.MkdirAll(options.output, 0755)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	jsonFile, err := os.Open(options.input)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	dec := json.NewDecoder(jsonFile)
+	for {
+		var input SurfaceBugBountyInput
+
+		err := dec.Decode(&input)
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			gologger.Fatal().Msgf("%v", err)
+			log.Fatalf("%v", err)
 		}
-		dec := json.NewDecoder(jsonFile)
-		for {
-			var input SurfaceInput
 
-			err := dec.Decode(&input)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				gologger.Fatal().Msgf("%v", err)
-			}
+		// pass temporary file to subfinder instead of final path, as only finished files should be placed there
+		file, err := os.CreateTemp("", "subfinder")
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		defer os.Remove(file.Name())
 
-			// pass temporary file to subfinder instead of final path, as only finished files should be placed there
-			file, err := ioutil.TempFile("", "subfinder")
-			if err != nil {
-				gologger.Fatal().Msgf("%v", err)
-			}
-			defer os.Remove(file.Name())
+		flags := append(
+			[]string{
+				"-json",
+				"-o", file.Name(), "-d",
+				strings.Join(input.Domains, ","),
+			},
+			options.extraFlags...,
+		)
+		cmd := exec.Command(options.binPath, flags...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
 
-			options.OutputFile = file.Name()
-			options.JSON = true
-			options.Domain = input.Domains
+		if err != nil {
+			log.Fatalf("Failed to run scanner: %v", err)
+		}
 
-			runIt(options)
-
-			realOutputFile := path.Join(surfaceOutput, input.Name)
-			outputFile, err := os.Create(realOutputFile)
-			if err != nil {
-				gologger.Fatal().Msgf("Couldn't open dest file: %v", err)
-			}
-			defer outputFile.Close()
-			_, err = io.Copy(outputFile, file)
-			if err != nil {
-				gologger.Fatal().Msgf("Writing to output file failed: %v", err)
-			}
+		realOutputFile := path.Join(options.output, input.Name)
+		outputFile, err := os.Create(realOutputFile)
+		if err != nil {
+			log.Fatalf("Couldn't open dest file: %v", err)
+		}
+		defer outputFile.Close()
+		_, err = io.Copy(outputFile, file)
+		if err != nil {
+			log.Fatalf("Writing to output file failed: %v", err)
 		}
 	}
 }
