@@ -3,13 +3,12 @@ package main
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	flag "github.com/spf13/pflag"
 )
 
@@ -44,11 +43,11 @@ func main() {
 	options := ParseOptions()
 	err := os.MkdirAll(options.output, 0755)
 	if err != nil {
-		gologger.Fatal().Msgf("%v", err)
+		log.Fatalf("%v", err)
 	}
 	jsonFile, err := os.Open(options.input)
 	if err != nil {
-		gologger.Fatal().Msgf("%v", err)
+		log.Fatalf("%v", err)
 	}
 	dec := json.NewDecoder(jsonFile)
 	for {
@@ -59,13 +58,13 @@ func main() {
 			break
 		}
 		if err != nil {
-			gologger.Fatal().Msgf("%v", err)
+			log.Fatalf("%v", err)
 		}
 
 		// pass temporary file to subfinder instead of final path, as only finished files should be placed there
-		file, err := ioutil.TempFile("", "subfinder")
+		file, err := os.CreateTemp("", "subfinder")
 		if err != nil {
-			gologger.Fatal().Msgf("%v", err)
+			log.Fatalf("%v", err)
 		}
 		defer os.Remove(file.Name())
 
@@ -75,18 +74,18 @@ func main() {
 		err = cmd.Run()
 
 		if err != nil {
-			gologger.Fatal().Msgf("Failed to run scanner: %v", err)
+			log.Fatalf("Failed to run scanner: %v", err)
 		}
 
 		realOutputFile := path.Join(options.output, input.Name)
 		outputFile, err := os.Create(realOutputFile)
 		if err != nil {
-			gologger.Fatal().Msgf("Couldn't open dest file: %v", err)
+			log.Fatalf("Couldn't open dest file: %v", err)
 		}
 		defer outputFile.Close()
 		_, err = io.Copy(outputFile, file)
 		if err != nil {
-			gologger.Fatal().Msgf("Writing to output file failed: %v", err)
+			log.Fatalf("Writing to output file failed: %v", err)
 		}
 	}
 }
