@@ -1,4 +1,4 @@
-ARG SUBFINDER_VERSION=2.5.5
+ARG SUBFINDER_VERSION=2.5.7
 ARG BASE=alpine:3.15
 
 #### scanner-builder
