@@ -99,8 +99,10 @@ Extra flags: ` + exe + ` ... -- -extra -flags /path/to/input.txt`)
 		flags := append(
 			[]string{
 				"-json",
-				"-o", file.Name(), "-d",
-				strings.Join(input.Domains, ","),
+				"-o", file.Name(),
+				// no point checking for updates
+				"-duc",
+				"-d", strings.Join(input.Domains, ","),
 			},
 			options.extraFlags...,
 		)
