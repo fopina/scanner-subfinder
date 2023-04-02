@@ -11,4 +11,4 @@ jobs:
     uses: fopina/scanner-go-entrypoint/.github/workflows/build-n-push.yml@support_test
     with:
       push: false
-      # tags: ghcr.io/${{ github.repository }}:${{ github.run_number }},ghcr.io/${{ github.repository }}:latest
+      tags: x
