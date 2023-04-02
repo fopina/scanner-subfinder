@@ -8,9 +8,6 @@ on:
 
 jobs:
   publish-dev:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: fopina/scanner-go-entrypoint/build-workflow.yml@reusable_workflow
-      with:
-        tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+    uses: fopina/scanner-go-entrypoint/build-workflow.yml@reusable_workflow
+    with:
+      tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
