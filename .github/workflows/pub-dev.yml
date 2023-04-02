@@ -8,6 +8,6 @@ on:
 
 jobs:
   publish-dev:
-    uses: fopina/scanner-go-entrypoint/.github/workflows/build-n-push.yml@v0.2.0
+    uses: surface-security/scanner-go-entrypoint/.github/workflows/build-n-push.yml@v0.2.0
     with:
       tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
