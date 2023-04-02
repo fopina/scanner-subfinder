@@ -1,26 +1,22 @@
 package main
 
 import (
-	"encoding/json"
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 
-	"github.com/fopina/scanner-go-entrypoint/scanner"
+	"github.com/surface-security/scanner-go-entrypoint/scanner"
 )
 
-type SurfaceBugBountyInput struct {
+type DomainListInput struct {
 	Name    string
 	Domains []string
 }
 
 func main() {
-	s := scanner.Scanner{
-		Name: "subfinder",
-	}
+	s := scanner.Scanner{Name: "subfinder"}
 	options := s.BuildOptions()
 	scanner.ParseOptions(options)
 
@@ -28,22 +24,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	jsonFile, err := os.Open(options.Input)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	dec := json.NewDecoder(jsonFile)
-	for {
-		var input SurfaceBugBountyInput
 
-		err := dec.Decode(&input)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-
+	scanner.ReadInputJSONLines(options, func(input DomainListInput) bool {
 		// pass temporary file to subfinder instead of final path, as only finished files should be placed there
 		file, err := os.CreateTemp("", "subfinder")
 		if err != nil {
@@ -51,21 +33,13 @@ func main() {
 		}
 		defer os.Remove(file.Name())
 
-		flags := append(
-			[]string{
-				"-json",
-				"-o", file.Name(),
-				// no point checking for updates
-				"-duc",
-				"-d", strings.Join(input.Domains, ","),
-			},
-			options.ExtraFlags...,
+		err = s.Exec(
+			"-json",
+			"-o", file.Name(),
+			// no point checking for updates
+			"-duc",
+			"-d", strings.Join(input.Domains, ","),
 		)
-		cmd := exec.Command(options.BinPath, flags...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err = cmd.Run()
-
 		if err != nil {
 			log.Fatalf("Failed to run scanner: %v", err)
 		}
@@ -80,5 +54,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("Writing to output file failed: %v", err)
 		}
-	}
+		return true
+	})
 }
