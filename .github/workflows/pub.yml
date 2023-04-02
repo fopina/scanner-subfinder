@@ -7,6 +7,6 @@ on:
 
 jobs:
   publish:
-    uses: fopina/scanner-go-entrypoint/.github/workflows/build-n-push.yml@v1
+    uses: fopina/scanner-go-entrypoint/.github/workflows/build-n-push.yml@v0.1.0
     with:
       tags: ghcr.io/${{ github.repository }}:${{ github.run_number }},ghcr.io/${{ github.repository }}:latest
