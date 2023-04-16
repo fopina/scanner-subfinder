@@ -1,2 +1,3 @@
 {"name": "skmobi", "domains": ["skmobi.com"]}
-{"name": "ppb", "domains": ["betfair.com","paddypower.com","paddypowerbetfair.com"]}
+{"name": "random", "domains": []}
+{"name": "ppb", "domains": ["betfair.com","paddypowerbetfair.com"]}

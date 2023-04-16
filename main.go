@@ -26,6 +26,10 @@ func main() {
 	}
 
 	scanner.ReadInputJSONLines(options, func(input DomainListInput) bool {
+		if len(input.Domains) == 0 {
+			log.Printf("No domains for %s", input.Name)
+			return true
+		}
 		// pass temporary file to subfinder instead of final path, as only finished files should be placed there
 		file, err := os.CreateTemp("", "subfinder")
 		if err != nil {
